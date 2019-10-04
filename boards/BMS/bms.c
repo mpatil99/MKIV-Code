@@ -39,7 +39,7 @@
 
 // controls whether or not we UART anything
 #define VERBOSE 1  // this will print PEC error count each cycle, any temperature and voltage cells that fault, the voltages of a whole segment if it has an overvoltage fault
-#define PRINT_TEMPS 0 // this will UART all temperatures
+#define PRINT_TEMPS 1 // this will UART all temperatures
 
 volatile uint8_t gFlag = 0;
 uint8_t gStatusMessage[7];
@@ -57,7 +57,7 @@ char temp_msg[6*20+4+5] = "";
 //Under Voltage and Over Voltage Thresholds
 const uint16_t SPECIAL_OV_THRESHOLD = 45000; // currently set the overvoltage threshold to 4.5V to try to drain one overvolted cell (ic 1, cell 3)
 const uint16_t OV_THRESHOLD = 42000;//35900; // Over voltage threshold ADC Code
-const uint16_t UV_THRESHOLD = 25000; //20000;// Under voltage threshold ADC Code
+const uint16_t UV_THRESHOLD = 30000; //20000;// Under voltage threshold ADC Code
 
 //Temperature sensor voltage thresholds
 const uint16_t OT_THRESHOLD = 728; // 60 deg. C
@@ -126,6 +126,10 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
         // Do value checking
         gFlag &= ~(OVER_VOLTAGE | UNDER_VOLTAGE);
 
+        uint16_t avg_of_weird_cells = cell_voltages[1][2]/2+cell_voltages[1][3]/2;
+        cell_voltages[1][2] = avg_of_weird_cells;
+        cell_voltages[1][3] = avg_of_weird_cells;
+
         for (uint8_t ic = 0; ic < TOTAL_IC; ic++) {
             for (uint8_t cell = 0; cell < NUM_CELLS; cell++) {
 
@@ -142,7 +146,7 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
                     #endif
                 }
                 else if (cell_value > OV_THRESHOLD) {
-                    //gFlag |= OVER_VOLTAGE; // left out for now to prevent shutdown on overvolted cell
+                    gFlag |= OVER_VOLTAGE; // left out for now to prevent shutdown on overvolted cell
                     #if(VERBOSE==1)
                     sprintf( temp_msg, "OV ic: %u cell: %u v: %u", ic, cell, cell_value);
                     LOG_println(temp_msg, strlen(temp_msg));
