@@ -38,7 +38,7 @@
 #define SOFT_OVER_TEMP      0b00100000
 
 // controls whether or not we UART anything
-#define VERBOSE 0 // this will print PEC error count each cycle, any temperature and voltage cells that fault, the voltages of a whole segment if it has an overvoltage fault
+#define VERBOSE 1  // this will print PEC error count each cycle, any temperature and voltage cells that fault, the voltages of a whole segment if it has an overvoltage fault
 #define PRINT_TEMPS 0 // this will UART all temperatures
 
 volatile uint8_t gFlag = 0;
@@ -109,10 +109,6 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
 {
     int8_t error = 0;
 
-    #if(VERBOSE==1)
-    uint16_t segments_with_bad_cells = 0x00; // place to store segments with bad cells so we can print the whole segment
-    #endif
-
     wakeup_sleep(TOTAL_IC);
     // Start a cell conversion on all cells
     ltc6811_adcv(MD_7KHZ_3KHZ, DCP_ENABLED, CELL_CH_ALL);
@@ -141,7 +137,6 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
                 if (cell_value > SPECIAL_OV_THRESHOLD) {
                     gFlag |= OVER_VOLTAGE;
                     #if(VERBOSE==1)
-                    segments_with_bad_cells |= _BV(ic);
                     sprintf( temp_msg, "OV ic: %u cell: %u v: %u", ic, cell, cell_value);
                     LOG_println(temp_msg, strlen(temp_msg));
                     #endif
@@ -149,7 +144,6 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
                 else if (cell_value > OV_THRESHOLD) {
                     //gFlag |= OVER_VOLTAGE; // left out for now to prevent shutdown on overvolted cell
                     #if(VERBOSE==1)
-                    segments_with_bad_cells |= _BV(ic);
                     sprintf( temp_msg, "OV ic: %u cell: %u v: %u", ic, cell, cell_value);
                     LOG_println(temp_msg, strlen(temp_msg));
                     #endif
@@ -157,7 +151,6 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
                 else if (cell_value < UV_THRESHOLD) {
                     gFlag |= UNDER_VOLTAGE;
                     #if(VERBOSE==1)
-                    segments_with_bad_cells |= _BV(ic);
                     sprintf( temp_msg, "UV ic: %u cell: %u v: %u", ic, cell, cell_value);
                     LOG_println(temp_msg, strlen(temp_msg));
                     #endif
@@ -168,8 +161,7 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
 
     #if(VERBOSE==1)
     for (int i = 0; i < TOTAL_IC; i++) {
-      if (bit_is_set(segments_with_bad_cells, i)) {
-          sprintf(temp_msg, "v%d,%3d,%u,%u,%u,%u,"
+       sprintf(temp_msg, "v%d,%3d,%u,%u,%u,%u,"
                            "%u,%u,%u,%u,"
                            "%u,%u",
                             i,
@@ -185,8 +177,7 @@ int8_t read_all_voltages(void) // Start Cell ADC Measurement
                             cell_voltages[i][9],
                             cell_voltages[i][10]);
 
-          LOG_println(temp_msg, strlen(temp_msg));
-      }
+       LOG_println(temp_msg, strlen(temp_msg));
     }
     #endif
 
